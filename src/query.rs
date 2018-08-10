@@ -51,3 +51,24 @@ impl<T: Clone> Queryable for Vec<T> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn select() {
+        let data = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+        assert_eq!(data.to_vec(0..9), &data[0..9]);
+        assert_eq!(data.to_vec([1, 3].iter().cloned()), [1, 3]);
+    }
+
+    #[test]
+    fn apply() {
+        let mut data = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+        data.apply(2..8, |_, x| x + 1);
+        assert_eq!(data, [0, 1, 3, 4, 5, 6, 7, 8, 8, 9]);
+    }
+}
