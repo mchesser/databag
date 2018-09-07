@@ -2,6 +2,7 @@ use std::iter::FromIterator;
 
 use query::Queryable;
 
+#[derive(Clone, Debug)]
 pub struct FactorData<T> {
     pub rows: Vec<usize>,
     pub factors: Vec<T>

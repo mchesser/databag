@@ -1,4 +1,4 @@
-use std::any::{Any, TypeId};
+use std::any::Any;
 use std::collections::HashMap;
 
 use column::{Column, FactorData};
@@ -28,6 +28,10 @@ impl DataFrame {
 
     pub fn get_mut<T: 'static>(&mut self, field: &str) -> &mut Column<T> {
         self.columns.get_mut(field).unwrap().value.downcast_mut().unwrap()
+    }
+
+    pub fn get_dynamic_mut(&mut self, field: &str) -> DynamicFieldMut {
+        self.columns.get_mut(field).unwrap().get_dynamic_mut()
     }
 
     pub fn is_type<T: 'static>(&self, field: &str) -> bool {
