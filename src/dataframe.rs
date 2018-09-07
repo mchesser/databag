@@ -1,24 +1,10 @@
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
 
-use column::Column;
+use column::{Column, FactorData};
 
 pub struct DataFrame {
     columns: HashMap<String, Entry>,
-}
-
-struct Entry {
-    value: Box<dyn Any + 'static>,
-    type_id: TypeId,
-}
-
-impl Entry {
-    fn new<T: 'static, C: Into<Column<T>>>(col: C) -> Entry {
-        Entry {
-            value: Box::new(col.into()) as Box<dyn Any>,
-            type_id: TypeId::of::<T>(),
-        }
-    }
 }
 
 impl DataFrame {
@@ -36,6 +22,10 @@ impl DataFrame {
         self.columns[field].value.downcast_ref().unwrap()
     }
 
+    pub fn get_dynamic(&self, field: &str) -> DynamicField {
+        self.columns[field].get_dynamic()
+    }
+
     pub fn get_mut<T: 'static>(&mut self, field: &str) -> &mut Column<T> {
         self.columns.get_mut(field).unwrap().value.downcast_mut().unwrap()
     }
@@ -43,6 +33,58 @@ impl DataFrame {
     pub fn is_type<T: 'static>(&self, field: &str) -> bool {
         self.columns[field].type_id == TypeId::of::<T>()
     }
+}
+
+
+struct Entry {
+    value: Box<dyn Any + 'static>,
+    type_id: TypeId,
+}
+
+impl Entry {
+    fn new<T: 'static, C: Into<Column<T>>>(col: C) -> Entry {
+        Entry {
+            value: Box::new(col.into()) as Box<dyn Any>,
+            type_id: TypeId::of::<T>(),
+        }
+    }
+
+    fn get_dynamic(&self) -> DynamicField {
+        if self.type_id == TypeId::of::<i64>() {
+            DynamicField::Int64(self.value.downcast_ref::<Column<i64>>().unwrap().as_ref())
+        }
+        else if self.type_id == TypeId::of::<f32>() {
+            DynamicField::Float32(self.value.downcast_ref::<Column<f32>>().unwrap().as_ref())
+        }
+        else if self.type_id == TypeId::of::<f64>() {
+            DynamicField::Float64(self.value.downcast_ref::<Column<f64>>().unwrap().as_ref())
+        }
+        else if self.type_id == TypeId::of::<String>() {
+            DynamicField::String(self.value.downcast_ref::<Column<String>>().unwrap().as_factor())
+        }
+        else {
+            // TODO tighten constraints on T so this can't happen
+            unimplemented!()
+        }
+    }
+
+    fn get_dynamic_mut(&mut self) -> DynamicFieldMut {
+        unimplemented!()
+    }
+}
+
+pub enum DynamicField<'a> {
+    Int64(&'a [i64]),
+    Float32(&'a [f32]),
+    Float64(&'a [f64]),
+    String(&'a FactorData<String>),
+}
+
+pub enum DynamicFieldMut<'a> {
+    Int64(&'a mut [i64]),
+    Float32(&'a mut [f32]),
+    Float64(&'a mut [f64]),
+    String(&'a mut FactorData<String>),
 }
 
 #[cfg(test)]
@@ -90,5 +132,30 @@ mod tests {
         assert_eq!(data.get::<String>("factors")[0], "bananas");
         assert_eq!(data.get::<String>("factors")[1], "bananas");
         assert_eq!(data.get::<String>("factors")[2], "apples");
+    }
+
+    #[test]
+    fn dynamic() {
+        let mut data = DataFrame::new();
+        data.add_column("ints".into(), vec![0_i64; 2]);
+        data.add_column("floats".into(), vec![0.0_f32; 2]);
+        data.add_column("factors".into(),
+            Column::factor(["apples", "apples", "bananas"].iter().map(|&x| x).collect())
+        );
+
+        match data.get_dynamic("ints") {
+            DynamicField::Int64(_ints) => {},
+            _ => panic!("Incorrect dynamic type"),
+        }
+
+        match data.get_dynamic("floats") {
+            DynamicField::Float32(_floats) => {},
+            _ => panic!("Incorrect dynamic type"),
+        }
+
+        match data.get_dynamic("factors") {
+            DynamicField::String(_factors) => {},
+            _ => panic!("Incorrect dynamic type"),
+        }
     }
 }

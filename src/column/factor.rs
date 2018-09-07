@@ -7,6 +7,29 @@ pub struct FactorData<T> {
     factors: Vec<T>
 }
 
+impl FactorData<String> {
+    pub fn new<'a, I>(factors: Vec<String>, values: I) -> FactorData<String>
+    where
+        I : Iterator<Item=&'a str>,
+    {
+        let mut data = FactorData { rows: vec![], factors: factors };
+        for value in values {
+            data.add_row(value)
+        }
+        data
+    }
+
+    pub fn add_row(&mut self, value: &str) {
+        match self.factors.iter().position(|x| x == value) {
+            Some(i) => self.rows.push(i),
+            None => {
+                self.rows.push(self.factors.len());
+                self.factors.push(value.into());
+            }
+        }
+    }
+}
+
 impl<T: Clone + PartialEq> Queryable for FactorData<T> {
     type Item = T;
 
@@ -35,17 +58,6 @@ impl<T: Clone + PartialEq> Queryable for FactorData<T> {
 
 impl<'a> FromIterator<&'a str> for FactorData<String> {
     fn from_iter<T: IntoIterator<Item=&'a str>>(iter: T) -> FactorData<String> {
-        let mut data = FactorData { rows: vec![], factors: vec![] };
-        for value in iter {
-            match data.factors.iter().position(|x| x == value) {
-                Some(i) => data.rows.push(i),
-                None => {
-                    data.rows.push(data.factors.len());
-                    data.factors.push(value.into());
-                }
-            }
-        }
-
-        data
+        FactorData::new(vec![], iter.into_iter())
     }
 }
