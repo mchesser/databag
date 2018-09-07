@@ -3,8 +3,14 @@ use std::iter::FromIterator;
 use query::Queryable;
 
 pub struct FactorData<T> {
-    rows: Vec<usize>,
-    factors: Vec<T>
+    pub rows: Vec<usize>,
+    pub factors: Vec<T>
+}
+
+impl<T> FactorData<T> {
+    pub fn len(&self) -> usize {
+        self.rows.len()
+    }
 }
 
 impl FactorData<String> {
