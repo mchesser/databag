@@ -31,35 +31,33 @@ impl DataFrame {
     }
 
     pub fn is_type<T: 'static>(&self, field: &str) -> bool {
-        self.columns[field].type_id == TypeId::of::<T>()
+        self.columns[field].value.is::<Column<T>>()
     }
 }
 
 
 struct Entry {
     value: Box<dyn Any + 'static>,
-    type_id: TypeId,
 }
 
 impl Entry {
     fn new<T: 'static, C: Into<Column<T>>>(col: C) -> Entry {
         Entry {
             value: Box::new(col.into()) as Box<dyn Any>,
-            type_id: TypeId::of::<T>(),
         }
     }
 
     fn get_dynamic(&self) -> DynamicField {
-        if self.type_id == TypeId::of::<i64>() {
+        if self.value.is::<Column<i64>>() {
             DynamicField::Int64(self.value.downcast_ref::<Column<i64>>().unwrap().as_ref())
         }
-        else if self.type_id == TypeId::of::<f32>() {
+        else if self.value.is::<Column<f32>>() {
             DynamicField::Float32(self.value.downcast_ref::<Column<f32>>().unwrap().as_ref())
         }
-        else if self.type_id == TypeId::of::<f64>() {
+        else if self.value.is::<Column<f64>>() {
             DynamicField::Float64(self.value.downcast_ref::<Column<f64>>().unwrap().as_ref())
         }
-        else if self.type_id == TypeId::of::<String>() {
+        else if self.value.is::<Column<String>>() {
             DynamicField::String(self.value.downcast_ref::<Column<String>>().unwrap().as_factor())
         }
         else {
