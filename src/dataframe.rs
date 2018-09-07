@@ -1,10 +1,24 @@
-use std::any::Any;
+use std::any::{Any, TypeId};
 use std::collections::HashMap;
 
 use column::Column;
 
 pub struct DataFrame {
-    columns: HashMap<String, Box<Any + 'static>>
+    columns: HashMap<String, Entry>,
+}
+
+struct Entry {
+    value: Box<dyn Any + 'static>,
+    type_id: TypeId,
+}
+
+impl Entry {
+    fn new<T: 'static, C: Into<Column<T>>>(col: C) -> Entry {
+        Entry {
+            value: Box::new(col.into()) as Box<dyn Any>,
+            type_id: TypeId::of::<T>(),
+        }
+    }
 }
 
 impl DataFrame {
@@ -15,15 +29,19 @@ impl DataFrame {
     }
 
     pub fn add_column<T: 'static, C: Into<Column<T>>>(&mut self, name: String, col: C) {
-        self.columns.insert(name, Box::new(col.into()) as Box<Any>);
+        self.columns.insert(name, Entry::new(col));
     }
 
     pub fn get<T: 'static>(&self, field: &str) -> &Column<T> {
-        self.columns[field].downcast_ref().unwrap()
+        self.columns[field].value.downcast_ref().unwrap()
     }
 
     pub fn get_mut<T: 'static>(&mut self, field: &str) -> &mut Column<T> {
-        self.columns.get_mut(field).unwrap().downcast_mut().unwrap()
+        self.columns.get_mut(field).unwrap().value.downcast_mut().unwrap()
+    }
+
+    pub fn is_type<T: 'static>(&self, field: &str) -> bool {
+        self.columns[field].type_id == TypeId::of::<T>()
     }
 }
 
@@ -38,6 +56,9 @@ mod tests {
         data.add_column("factors".into(),
             Column::factor(["apples", "apples", "bananas"].iter().map(|&x| x).collect())
         );
+
+        assert!(data.is_type::<i32>("nums"));
+        assert!(data.is_type::<String>("factors"));
 
         assert_eq!(data.get::<i32>("nums")[0], 0);
         assert_eq!(data.get::<i32>("nums")[1], 1);
